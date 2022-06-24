@@ -56,6 +56,8 @@ public class BojarczukEvaluator extends AbstractParallelEvaluator
 
 	protected int maxDerivSize;
 
+	protected String fitness;
+
 	/** Fitness comparator */
 
 	protected transient ValueFitnessComparator comparator = new ValueFitnessComparator(!maximize);
@@ -97,6 +99,14 @@ public class BojarczukEvaluator extends AbstractParallelEvaluator
 	public void setDataset(IDataset dataset)
 	{
 		this.dataset = dataset;
+	}
+
+	public void setFitness(String value) {
+		this.fitness = value;
+	}
+
+	public String getFitness() {
+		return fitness;
 	}
 
 	/**
@@ -144,143 +154,142 @@ public class BojarczukEvaluator extends AbstractParallelEvaluator
 		fn = new int [numClasses];
 		fp = new int [numClasses];
 
-		// double[] valorOMAE = new double [numClasses];
-		//
-		// int num_instancias = dataset.numberOfInstances();
-		//
-		// //Calculate the confusion matrix for each class
-		// for(IInstance instance : dataset.getInstances())
-		// {
-		//
-		//
-		// 	if((Boolean) rule.covers(instance))
-		// 	{
-		//
-		// 		double value = instance.getValue(metadata.getClassIndex());
-		//
-		// 		tp[(int) value]++;
-		// 		for(int i=0; i<numClasses; i++) {
-		// 			if(((int) value) != i)
-		// 				fp[i]++;
-		//
-		// 			valorOMAE[i] += Math.abs(i - value);
-		// 		}
-		// 	}
-		// 	else
-		// 	{
-		// 		double value = instance.getValue(metadata.getClassIndex());
-		//
-		// 		fn[(int) value]++;
-		// 		valorOMAE[(int) value] += numClasses;
-		// 		for(int i=0; i<numClasses; i++){
-		// 			if(((int) value) != i)
-		// 				tn[i]++;
-		// 		}
-		// 	}
-		// }
-		//
-		//
-		// //Calculate the fitness for each class
-		// double se = -1, sp = 1, sy;
-		// double seAux, spAux;
-		// int bestClass = -1;
-		// double bestOMAEAux = Double.POSITIVE_INFINITY;
-		//
-		// for(int i=0; i<numClasses; i++)
-		// {
-		//
-		// 	valorOMAE[i] /= num_instancias;
-		//
-		// 	if (valorOMAE[i] < bestOMAEAux) {
-		// 		bestClass = i;
-		// 		bestOMAEAux = valorOMAE[i];
-		//
-		// 	}
-		//
-		// }
-		//
-		// // Assign as consequent the class that reports the best fitness
-		// rule.setConsequent(bestClass);
-		//
-		//
-		// double OMAE_final = 0.0;
-		//
-		// for (int i = 0; i < numClasses; i++) {
-		// 	OMAE_final += valorOMAE[i];
-		// }
-		//
-		// OMAE_final /= numClasses;
-		//
-		//
-		// individual.setFitness(new SimpleValueFitness(OMAE_final));
+		double[] valorOMAE = new double [numClasses];
+
+		int num_instancias = dataset.numberOfInstances();
 
 
+		if (!fitness.equals("DEFAULT")) {
 
-
-
-
-
-		//Calculate the confusion matrix for each class
-		for(IInstance instance : dataset.getInstances())
-		{
-			if((Boolean) rule.covers(instance))
+			//Calculate the confusion matrix for each class
+			for(IInstance instance : dataset.getInstances())
 			{
-				double value = instance.getValue(metadata.getClassIndex());
-				tp[(int) value]++;
-				for(int i=0; i<numClasses; i++)
-					if(((int) value) != i)
-						fp[i]++;
+
+				if((Boolean) rule.covers(instance))
+				{
+
+					double value = instance.getValue(metadata.getClassIndex());
+
+					for(int i=0; i<numClasses; i++) {
+						valorOMAE[i] += Math.abs(i - value);
+					}
+				}
+				else
+				{
+					double value = instance.getValue(metadata.getClassIndex());
+					valorOMAE[(int) value] += numClasses;
+				}
 			}
+
+
+			//Calculate the fitness for each class
+			double se = -1, sp = 1, sy;
+			double seAux, spAux;
+			int bestClass = -1;
+			double bestOMAEAux = Double.POSITIVE_INFINITY;
+
+			for(int i=0; i<numClasses; i++)
+			{
+
+				valorOMAE[i] /= num_instancias;
+
+				if (valorOMAE[i] < bestOMAEAux) {
+					bestClass = i;
+					bestOMAEAux = valorOMAE[i];
+
+				}
+
+			}
+
+			// Assign as consequent the class that reports the best fitness
+			rule.setConsequent(bestClass);
+
+
+			double OMAE_final = 0.0;
+
+			double MMAE = 0.0;
+
+			for (int i = 0; i < numClasses; i++) {
+				OMAE_final += valorOMAE[i];
+
+				// para MMAE
+				if (valorOMAE[i] > MMAE) {
+					MMAE = valorOMAE[i];
+				}
+
+			}
+
+			// para AMAE
+			if (fitness.equals("AMAE"))
+			 	OMAE_final /= (double)numClasses;
+
+			if (fitness.equals("MMAE"))
+				individual.setFitness(new SimpleValueFitness(MMAE));
 			else
-			{
-				double value = instance.getValue(metadata.getClassIndex());
+				individual.setFitness(new SimpleValueFitness(OMAE_final));
 
-				fn[(int) value]++;
-				for(int i=0; i<numClasses; i++)
-					if(((int) value) != i)
-						tn[i]++;
+
+		} // fin if OMAE AMAE y MMAE
+		else {
+				//Calculate the confusion matrix for each class
+			for(IInstance instance : dataset.getInstances())
+			{
+				if((Boolean) rule.covers(instance))
+				{
+					double value = instance.getValue(metadata.getClassIndex());
+					tp[(int) value]++;
+					for(int i=0; i<numClasses; i++)
+						if(((int) value) != i)
+							fp[i]++;
+				}
+				else
+				{
+					double value = instance.getValue(metadata.getClassIndex());
+
+					fn[(int) value]++;
+					for(int i=0; i<numClasses; i++)
+						if(((int) value) != i)
+							tn[i]++;
+				}
 			}
+
+			//Calculate the fitness for each class
+			double se = -1, sp = 1, sy;
+			double seAux, spAux;
+			int bestClass = -1;
+
+			for(int i=0; i<numClasses; i++)
+			{
+				if(tp[i]+fn[i] == 0)
+					seAux = 1;
+				else
+					seAux = (double) tp[i]/(tp[i]+fn[i]);
+
+				if(tn[i]+fp[i] == 0)
+					spAux = 1;
+				else
+					spAux = (double) tn[i]/(tn[i]+fp[i]);
+
+				if(seAux*spAux == se*sp)
+					bestClass = i;
+
+				if(seAux*spAux > se*sp)
+				{
+					se = seAux;
+					sp = spAux;
+					bestClass = i;
+				}
+			}
+
+			// Assign as consequent the class that reports the best fitness
+			rule.setConsequent(bestClass);
+
+			double numnodes = rule.getAntecedent().size();
+
+			sy = (getMaxDerivSize() - 0.5*numnodes -0.5)/(getMaxDerivSize()-1);
+
+			individual.setFitness(new SimpleValueFitness(se*sp*sy));
 		}
-
-		//Calculate the fitness for each class
-		double se = -1, sp = 1, sy;
-		double seAux, spAux;
-		int bestClass = -1;
-
-		for(int i=0; i<numClasses; i++)
-		{
-			if(tp[i]+fn[i] == 0)
-				seAux = 1;
-			else
-				seAux = (double) tp[i]/(tp[i]+fn[i]);
-
-			if(tn[i]+fp[i] == 0)
-				spAux = 1;
-			else
-				spAux = (double) tn[i]/(tn[i]+fp[i]);
-
-			if(seAux*spAux == se*sp)
-				bestClass = i;
-
-			if(seAux*spAux > se*sp)
-			{
-				se = seAux;
-				sp = spAux;
-				bestClass = i;
-			}
-		}
-
-		// Assign as consequent the class that reports the best fitness
-		rule.setConsequent(bestClass);
-
-		double numnodes = rule.getAntecedent().size();
-
-		sy = (getMaxDerivSize() - 0.5*numnodes -0.5)/(getMaxDerivSize()-1);
-
-		individual.setFitness(new SimpleValueFitness(se*sp*sy));
-
-
-
 
 	}
 

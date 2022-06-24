@@ -282,6 +282,9 @@ public class BojarczukAlgorithm extends ClassificationAlgorithm
 		((BojarczukEvaluator) evaluator).setDataset(getTrainSet());
 		((BojarczukEvaluator) evaluator).setMaxDerivSize(maxDerivSize);
 
+		String fitness = settings.getString("fitness");
+		((BojarczukEvaluator) evaluator).setFitness(fitness);
+
 		// Parents selector
 		setParentsSelectorSetting(settings);
 
