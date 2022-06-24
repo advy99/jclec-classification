@@ -427,6 +427,8 @@ public abstract class ClassificationReporter implements IAlgorithmListener, ICon
 
 		}
 
+		OMAE_total = OMAE_total / (double) confusionMatrix.length;
+
 		return OMAE_total;
 	}
 
