@@ -56,6 +56,10 @@ public class TanEvaluator extends AbstractParallelEvaluator implements IConfigur
 
 	protected int classifiedClass;
 
+	protected String fitness;
+
+	protected int numClasses;
+
 	/** Parameters to take into the simplicity of the rule */
 
 	protected double w1, w2;
@@ -100,8 +104,22 @@ public class TanEvaluator extends AbstractParallelEvaluator implements IConfigur
 	public void setDataset(IDataset dataset)
 	{
 		this.dataset = dataset;
+		numClasses = dataset.getMetadata().numberOfClasses();
 	}
 
+
+	public void setFitness(String value) {
+		this.fitness = value;
+		if (value.equals("DEFAULT")) {
+			maximize = true;
+		} else if (value.equals("DEFAULT")) {
+			maximize = false;
+		}
+	}
+
+	public String getFitness() {
+		return fitness;
+	}
 	/**
 	 * Get the W1 parameter
 	 *
@@ -194,6 +212,8 @@ public class TanEvaluator extends AbstractParallelEvaluator implements IConfigur
 		int tp = 0, fp = 0, tn = 0, fn = 0;
 
 		IMetadata metadata = getDataset().getMetadata();
+		double OMAE = 0.0;
+		int num_instancias = dataset.numberOfInstances();
 
 		//Calculate the confusion matrix
 		for(IInstance instance : dataset.getInstances())
@@ -202,6 +222,7 @@ public class TanEvaluator extends AbstractParallelEvaluator implements IConfigur
 
 			if((Boolean) rule.covers(instance))
 			{
+				OMAE += Math.abs(classifiedClass - value);
 				if (value == classifiedClass)
 					tp++;
 				else
@@ -211,12 +232,16 @@ public class TanEvaluator extends AbstractParallelEvaluator implements IConfigur
 			{
 				if (value != classifiedClass)
 					tn++;
-				else
+				else {
+					OMAE += numClasses;
 					fn++;
+				}
 			}
 		}
 
-		double fitness;
+		OMAE = OMAE / (double) num_instancias;
+
+		double fitness_ev;
 		double se, sp;
 
 	   	if(tp + fn == 0)
@@ -230,9 +255,13 @@ public class TanEvaluator extends AbstractParallelEvaluator implements IConfigur
 			sp = (double) tn / (tn + w2*fp);
 
 	    // Set the fitness to the individual
-		fitness = se * sp;
+		fitness_ev = se * sp;
 
-		individual.setFitness(new SimpleValueFitness(fitness));
+		if (fitness.equals("DEFAULT")) {
+			individual.setFitness(new SimpleValueFitness(fitness_ev));
+		} else if (fitness.equals("OMAE")) {
+			individual.setFitness(new SimpleValueFitness(OMAE));
+		}
 	}
 
 	/**

@@ -211,6 +211,10 @@ public class FalcoAlgorithm extends ClassificationAlgorithm
 
 		((FalcoEvaluator) evaluator).setDataset(getTrainSet());
 
+		String fitness = settings.getString("fitness");
+		((FalcoEvaluator) evaluator).setFitness(fitness);
+
+
 		// Parents selector
 		setParentsSelectorSettings(settings);
 
@@ -459,30 +463,28 @@ public class FalcoAlgorithm extends ClassificationAlgorithm
 		{
 			execution++;
 
-			for (int num_regla = 0; num_regla < 3;  num_regla++){
-				// Select the best classifier for this class
-				Rule rule = (Rule) ((SyntaxTreeRuleIndividual) bset.get(num_regla)).getPhenotype();
-				rule.setFitness(bset.get(num_regla).getFitness());
+			// Select the best classifier for this class
+			Rule rule = (Rule) ((SyntaxTreeRuleIndividual) bset.get(0)).getPhenotype();
+			rule.setFitness(bset.get(0).getFitness());
 
-				CrispRuleBase classifier = (CrispRuleBase) this.classifier;
+			CrispRuleBase classifier = (CrispRuleBase) this.classifier;
 
-				boolean added = false;
+			boolean added = false;
 
-				// Add the rule according to it fitness
-				if(classifier.getClassificationRules() != null)
-				for(int i = 0; i < classifier.getClassificationRules().size(); i++)
+			// Add the rule according to it fitness
+			if(classifier.getClassificationRules() != null)
+			for(int i = 0; i < classifier.getClassificationRules().size(); i++)
+			{
+				if(getEvaluator().getComparator().compare(classifier.getClassificationRule(i).getFitness(),rule.getFitness()) <= 0)
 				{
-					if(getEvaluator().getComparator().compare(classifier.getClassificationRule(i).getFitness(),rule.getFitness()) <= 0)
-					{
-						(classifier).addClassificationRule(i, rule);
-						added = true;
-						break;
-					}
+					(classifier).addClassificationRule(i, rule);
+					added = true;
+					break;
 				}
-
-				if(!added)
-					classifier.addClassificationRule(rule);
 			}
+
+			if(!added)
+				classifier.addClassificationRule(rule);
 
 			// If all classes have been covered then finish
 			if (execution == getTrainSet().getMetadata().numberOfClasses())

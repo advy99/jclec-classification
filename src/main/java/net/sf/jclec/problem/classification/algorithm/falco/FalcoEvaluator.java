@@ -62,6 +62,11 @@ public class FalcoEvaluator extends AbstractParallelEvaluator implements IConfig
 
 	protected int classifiedClass;
 
+	protected int numClasses;
+
+	protected String fitness;
+
+
 	/** Fitness comparator */
 
 	protected transient ValueFitnessComparator comparator = new ValueFitnessComparator(!maximize);
@@ -103,7 +108,16 @@ public class FalcoEvaluator extends AbstractParallelEvaluator implements IConfig
 	public void setDataset(IDataset dataset)
 	{
 		this.dataset = dataset;
+		numClasses = dataset.getMetadata().numberOfClasses();
+	}
 
+
+	public void setFitness(String value) {
+		this.fitness = value;
+	}
+
+	public String getFitness() {
+		return fitness;
 	}
 
 	/**
@@ -134,6 +148,14 @@ public class FalcoEvaluator extends AbstractParallelEvaluator implements IConfig
 	public int getClassifiedClass()
 	{
 		return classifiedClass;
+	}
+
+	public int getNumClasses() {
+		return numClasses;
+	}
+
+	public void setNumClasses(int nC) {
+		this.numClasses = nC;
 	}
 
 	/**
@@ -171,65 +193,50 @@ public class FalcoEvaluator extends AbstractParallelEvaluator implements IConfig
 	 * @param individual Individual to evaluate
 	 */
 
-	protected void evaluate(IIndividual individual)
-	{
-		Rule rule = (Rule) ((SyntaxTreeRuleIndividual) individual).getPhenotype();
+	 protected void evaluate(IIndividual individual)
+ 	{
+	 		Rule rule = (Rule) ((SyntaxTreeRuleIndividual) individual).getPhenotype();
 
-		int fails = 0;
+	 		int fails = 0;
 
-		IMetadata metadata = getDataset().getMetadata();
+	 		IMetadata metadata = getDataset().getMetadata();
+			double OMAE = 0.0;
+			int num_instancias = dataset.numberOfInstances();
 
-		double valorOMAE = 0.0;
-		int num_instancias_cubiertas = 0;
+	 		//Calculate the confussion matrix
+	 		for(IInstance instance : dataset.getInstances())
+	 		{
+	 			double value = instance.getValue(metadata.getClassIndex());
 
-		int numClasses = 10;
+	 			if((Boolean) rule.covers(instance))
+	 			{
+					OMAE += Math.abs(classifiedClass - value);
+	 				if(value != classifiedClass)
+	 					fails++;
+	 			}
+	 			else
+	 			{
+	 				if(value == classifiedClass){
+						OMAE += numClasses;
+	 					fails++;
+					}
+	 			}
+	 		}
 
-		//Calculate the confussion matrix
-		for(IInstance instance : dataset.getInstances())
-		{
+			OMAE = OMAE / (double) num_instancias;
 
-			double value = instance.getValue(metadata.getClassIndex());
+	 		int depth = ((SyntaxTreeRuleIndividual) individual).getGenotype().derivSize();
+	 		int numNodes = rule.getAntecedent().size();
 
+	 		int fs = depth + numNodes;
 
-			if((Boolean) rule.covers(instance))
-			{
-				valorOMAE += Math.abs(classifiedClass - value);
-				num_instancias_cubiertas++;
-
-				if(value != classifiedClass)
-					fails++;
+			if (fitness.equals("DEFAULT")) {
+				//Compute the fitness
+				individual.setFitness(new SimpleValueFitness(2*fails + getAlpha()*fs));
+			} else if (fitness.equals("OMAE")) {
+				individual.setFitness(new SimpleValueFitness(OMAE));
 			}
-			else
-			{
-				if(value == classifiedClass) {
-					fails++;
-					// si no la cubro y debería, sumo en cuanto me he equivocado
-					valorOMAE += numClasses - Math.abs(classifiedClass - value);
-					// num_instancias_cubiertas++;
-				}
-
-			}
-
-		}
-
-		if (num_instancias_cubiertas == 0) {
-			valorOMAE = Double.POSITIVE_INFINITY;
-		} else {
-			valorOMAE = valorOMAE / (double) num_instancias_cubiertas;
-		}
-
-		int depth = ((SyntaxTreeRuleIndividual) individual).getGenotype().derivSize();
-		int numNodes = rule.getAntecedent().size();
-
-		int fs = depth + numNodes;
-
-		//Compute the fitness
-		// individual.setFitness(new SimpleValueFitness(2*fails + getAlpha()*fs));
-
-		individual.setFitness(new SimpleValueFitness(valorOMAE));
-
-	}
-
+ 	}
 	/**
 	 * {@inheritDoc}
 	 */
